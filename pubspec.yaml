@@ -1,0 +1,6 @@
+name: jqgrid_wrapper
+version: 0.0.2
+description: A pub package that wrapps jqgrid
+dependencies:
+  browser: any
+  intl: any
