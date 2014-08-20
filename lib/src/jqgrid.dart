@@ -58,16 +58,19 @@ class JQGridColumn {
 }
 
 class JQGrid {
-  String _containerId;
+  Object _container;
+  Object _pager;
   JsObject _grid;
   List<JQGridColumn> _columns = [];
   String _gridCaption = "";
   Function _onRowSelected = null;
   String _sortOrder;
   bool _sortAsc = true;
+  int _width = 640;
+  int _height = 480;
   
-  JQGrid(String id) {
-    _containerId = id;
+  JQGrid(Object container) {
+    _container = container;
   }
   
   void _setGridParam(String property, Object value) {
@@ -113,6 +116,11 @@ class JQGrid {
     return column;
   }
   
+  JQGridColumn addColumnItem(JQGridColumn column) {
+    _columns.add(column);
+        return column;
+  }
+  
   void render() {
     List columnNames = [];
     List columnDefinitions = [];
@@ -145,13 +153,18 @@ class JQGrid {
       }
       columnDefinitions.add(columnDefinition);
     });
-    
-    _grid = context.callMethod(r"$", ['#' + _containerId]);
+    if (_container is String) {
+      _grid = context.callMethod(r"$", ['#' + _container]);
+    }
+    else {
+      _grid = context.callMethod(r"$", [_container]);
+    }
     _grid.callMethod("jqGrid", [new JsObject.jsify({
           "datatype" : "local",
-          "autowidth": true,
-          "height" : 250,
-          "minWidth": 600, 
+          "autowidth": false,
+          "height" : _height,
+          "minWidth": 600,
+          "width": _width, 
           "minHeight": 300,
           "loadui" : "disable",
           "colNames" : columnNames,
@@ -159,9 +172,9 @@ class JQGrid {
           "forceFit": true,
           "caption" : _gridCaption,
           "viewrecords" : true,
-          "rowNum":200,
-          "rowList": [50,100, 200, 500, 1000],
-          "pager" : context.callMethod(r"$", ['#grid-pager']),
+          "rowNum":100000,
+//          "rowList": [50,100, 200, 500, 1000],
+          //"pager" : context.callMethod(r"$", ['#grid-pager']),
           "altRows": true,
           "multiselect": true,
           "multiboxonly": true,
@@ -184,4 +197,40 @@ class JQGrid {
       .callMethod("trigger", ["reloadGrid"]);
   }
   
+  void addItem(Object rowId, Map newData) {
+      _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(newData), "last", null]);
+  }
+  void updateItem(Object rowId, Map newData) {
+    _grid.callMethod("jqGrid", ['setRowData', rowId, new JsObject.jsify(newData), null]);
+  }
+  
+  void removeItem(Object rowId) {
+    _grid.callMethod("jqGrid", ['delRowData', rowId]);
+  }
+  void clearSelection() {
+    _grid.callMethod("jqGrid", ['resetSelection']);
+  }
+  void setSelection(List rowIds) {
+    clearSelection();
+    rowIds.forEach((rowId){
+      _grid.callMethod("jqGrid", ['setSelection', rowId]);
+    });
+  }
+  Object getSelectedRow() {
+    return _grid.callMethod("jqGrid", ['getGridParam', "selrow"]);
+  }
+  void setWidth(int value) {
+    _width = value;
+    if (_grid != null) {
+      _grid.callMethod("jqGrid", ['setGridWidth', _width, true]);
+    }
+  }
+  
+  void setHeight(int value) {
+    _height = value;
+    if (_grid != null) {
+      _grid.callMethod("jqGrid", ['setGridHeight', _height, true]);
+    }
+    
+  }
 }

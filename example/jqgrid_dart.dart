@@ -2,7 +2,7 @@ import "dart:html";
 import "package:jqgrid_wrapper/jqgrid_wrapper.dart";
 
 void main() {
-  JQGrid grid = new JQGrid("test-grid")
+  JQGrid grid = new JQGrid(querySelector("#test-grid"))
     ..addColumn("ID", "oid", width: 30, isKey: true, hidden: true)
     ..addColumn("Item Index", "index", width: 40, columnType: JQGridColumnType.INT, align: "right")
     ..addColumn("Item Name", "name", width: 60)
@@ -38,6 +38,8 @@ void main() {
   querySelector("#changeCaption").onClick.listen((e){
     grid.gridCaption = "Another grid caption";
   });
-  
+  querySelector("#widenGrid").onClick.listen((e){
+     grid.setWidth(200);
+   });
   
 }
