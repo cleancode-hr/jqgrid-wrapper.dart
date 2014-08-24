@@ -181,6 +181,7 @@ class JQGrid {
           "shrinkToFit": true,
           "grouping": true,
           "sortname": _sortOrder,
+          "scrollrows": true,
           "sortorder": _sortAsc ? "asc" : "desc",
           "onSelectRow" : (rowid, isChecked, b) {
             if (_onRowSelected != null) {
