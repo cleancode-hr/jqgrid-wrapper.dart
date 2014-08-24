@@ -197,7 +197,10 @@ class JQGrid {
     _grid.callMethod("jqGrid", ['setGridParam', new JsObject.jsify({"datatype": 'local', "data": newData})])
       .callMethod("trigger", ["reloadGrid"]);
   }
-  
+  void clearData() {
+    _grid.callMethod("jqGrid", ['clearGridData', true])
+          .callMethod("trigger", ["reloadGrid"]);
+  }
   void addItem(Object rowId, Map newData) {
       _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(newData), "last", null]);
   }
