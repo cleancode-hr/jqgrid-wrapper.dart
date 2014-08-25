@@ -64,6 +64,7 @@ class JQGrid {
   List<JQGridColumn> _columns = [];
   String _gridCaption = "";
   Function _onRowSelected = null;
+  Function _onRowRightClick = null;
   String _sortOrder;
   bool _sortAsc = true;
   int _width = 640;
@@ -82,6 +83,10 @@ class JQGrid {
   void set onRowSelected(Function value) {
     _onRowSelected = value;
   }
+  
+  void set onRowRightClick(Function value) {
+    _onRowRightClick = value;
+    }
   void setSort(String field, bool ascending) {
     _sortOrder = field;
     _sortAsc = ascending;
@@ -186,6 +191,12 @@ class JQGrid {
           "onSelectRow" : (rowid, isChecked, b) {
             if (_onRowSelected != null) {
               _onRowSelected(rowid, isChecked);
+            }
+          },
+          "onRightClickRow": (rowid, iRow, iCol, e){
+            if (_onRowRightClick != null) {
+              e.callMethod("preventDefault", []);
+              _onRowRightClick(rowid, iRow, iCol, e);
             }
           }
         })]);
