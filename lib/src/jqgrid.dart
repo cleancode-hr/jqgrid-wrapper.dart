@@ -10,7 +10,12 @@ class JQGridColumnType {
   /**
    * (Object value) {return value == null ? "" : "JUHU: " + value.toString();}
    */
-  Function formatFunction = null;
+  Function formatFunction = (Object value) {
+    if (value == null) {
+      return "";
+    }
+    return value.toString();
+  };
   
   static final JQGridColumnType STRING = new JQGridColumnType();
   static final JQGridColumnType INT = new JQGridColumnType()
@@ -149,7 +154,17 @@ class JQGrid {
         };
       }
       if (column.type.formatFunction != null) {
-        columnDefinition["formatter"] = (cellvalue, options, rowObject, operation) {
+        columnDefinition["formatter"] = (cellvalue, options, JsObject rowObject, operation) {
+//          List fields = column.fieldName.split(".");
+//          var element = rowObject;
+//          fields.forEach((String field){
+//            if (element != null) {
+//              element = element[field];
+//            }
+//          });
+//          var result = column.type.formatFunction(element);
+//          print("${rowObject[column.fieldName]} formatted to ${result}");
+//          return result;
           return column.type.formatFunction(cellvalue);
         };
       }
@@ -213,7 +228,7 @@ class JQGrid {
           .callMethod("trigger", ["reloadGrid"]);
   }
   void addItem(Object rowId, Map newData) {
-      _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(newData), "last", null]);
+    _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(newData), "last", null]);
   }
   void updateItem(Object rowId, Map newData) {
     _grid.callMethod("jqGrid", ['setRowData', rowId, new JsObject.jsify(newData), null]);
