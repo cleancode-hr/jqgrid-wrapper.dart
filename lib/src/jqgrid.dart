@@ -4,8 +4,19 @@ class JQGridColumnType {
   static final NumberFormat FORMAT_FLOAT_2 = new NumberFormat("#,##0.00", "hr_HR");
   static final NumberFormat FORMAT_FLOAT_6 = new NumberFormat("#,##0.000000", "hr_HR");
   String gridFormatter = "string";
-  Function sortFunction = (Object value) {
-    return value;
+  static String _utfChars(String value) {
+    return value
+        .replaceAll("š", "sz")
+        .replaceAll("ž", "zz")
+        .replaceAll("đ", "dzzz")
+        .replaceAll("ž", "zz")
+        .replaceAll("č", "cy")
+        .replaceAll("ć", "cz");
+  }
+  Function sortFunction = (Object value, Object other) {
+    String a = value == null ? "" : _utfChars(value.toString().toLowerCase());
+    String b = other == null ? "" : _utfChars(other.toString().toLowerCase());
+    return a == b ? 0 : (a.toString().compareTo(b.toString())); 
   };
   /**
    * (Object value) {return value == null ? "" : "JUHU: " + value.toString();}
@@ -20,17 +31,23 @@ class JQGridColumnType {
   static final JQGridColumnType STRING = new JQGridColumnType();
   static final JQGridColumnType INT = new JQGridColumnType()
     ..gridFormatter = "integer"
-    ..sortFunction = (Object value) {
-      return value as int; 
+    ..sortFunction = (Object value, Object other) {
+      int a = value == null ? 0 : value as int;
+      int b = other == null ? 0 : other as int;
+      return a == b ? 0 : (a > b ? 1 : -1);  
     };
   static final JQGridColumnType DATE = new JQGridColumnType()
     ..gridFormatter = "date"
-    ..sortFunction = (Object value) {
-      return (value as DateTime).millisecondsSinceEpoch; 
+    ..sortFunction = (Object value, Object other) {
+      int a = value == null ? 0 : (value as DateTime).millisecondsSinceEpoch;
+      int b = other == null ? 0 : (other as DateTime).millisecondsSinceEpoch;
+      return a == b ? 0 : (a > b ? 1 : -1);
     };
   static final JQGridColumnType FLOAT_2 = new JQGridColumnType()
-    ..sortFunction = (Object value) {
-       return (value as num); 
+    ..sortFunction = (Object value, Object other) {
+      num a = value == null ? 0 : value as num;
+      num b = other == null ? 0 : other as num;
+      return a == b ? 0 : (a > b ? 1 : -1);  
     }
     ..formatFunction = (Object value) {
       if (value == null) {
@@ -39,9 +56,11 @@ class JQGridColumnType {
       return FORMAT_FLOAT_2.format(value as num);
     };
   static final JQGridColumnType FLOAT_6 = new JQGridColumnType()
-    ..sortFunction = (Object value) {
-       return (value as num); 
-    }
+    ..sortFunction = (Object value, Object other) {
+          num a = value == null ? 0 : value as num;
+          num b = other == null ? 0 : other as num;
+          return a == b ? 0 : (a > b ? 1 : -1);  
+        }
     ..formatFunction = (Object value) {
       if (value == null) {
         return "";
@@ -74,6 +93,7 @@ class JQGrid {
   bool _sortAsc = true;
   int _width = 640;
   int _height = 480;
+  Map columnMappings = {};
   
   JQGrid(Object container) {
     _container = container;
@@ -134,10 +154,12 @@ class JQGrid {
   void render() {
     List columnNames = [];
     List columnDefinitions = [];
+    int i = 0;
     _columns.forEach((JQGridColumn column){
       columnNames.add(column.caption);
+      columnMappings[column.fieldName] = i.toString();
       Map columnDefinition = {
-        "name" : column.fieldName,
+        "name" : columnMappings[column.fieldName],
         "width" : column.width,
         "hidden" : column.hidden,
         "key" : column.isKey,
@@ -145,26 +167,14 @@ class JQGrid {
         "sortable": column.sortable,
         "align": column.align
       };
+      i++;
       if (column.type.sortFunction != null) {
-        columnDefinition["sorttype"] = (cell, JsObject obj) {
-          if (obj == null) {
-            return null;
-          }
-          return column.type.sortFunction(obj[column.fieldName]);
+        columnDefinition["sortfunc"] = (a, b, direction) {
+          return direction * column.type.sortFunction(a, b);
         };
       }
       if (column.type.formatFunction != null) {
         columnDefinition["formatter"] = (cellvalue, options, JsObject rowObject, operation) {
-//          List fields = column.fieldName.split(".");
-//          var element = rowObject;
-//          fields.forEach((String field){
-//            if (element != null) {
-//              element = element[field];
-//            }
-//          });
-//          var result = column.type.formatFunction(element);
-//          print("${rowObject[column.fieldName]} formatted to ${result}");
-//          return result;
           return column.type.formatFunction(cellvalue);
         };
       }
@@ -219,19 +229,54 @@ class JQGrid {
     context["testGrid"] = _grid;
   }
   
+  Object _mapItem(Map newData) {
+    Map result = {};
+    List keys = newData.keys.toList();
+    columnMappings.forEach((key, value){
+      result[value] = readProperty(newData, key);
+    });
+    return result;
+  }
+  
+  Object _mapItems(List newData) {
+      List result = [];
+      newData.forEach((item) => result.add(_mapItem(item)));
+      return result;
+    }
+  
   void setData(List newData) {
-    _grid.callMethod("jqGrid", ['setGridParam', new JsObject.jsify({"datatype": 'local', "data": newData})])
+    _grid.callMethod("jqGrid", ['setGridParam', new JsObject.jsify({"datatype": 'local', "data": _mapItems(newData)})])
       .callMethod("trigger", ["reloadGrid"]);
   }
   void clearData() {
     _grid.callMethod("jqGrid", ['clearGridData', true])
           .callMethod("trigger", ["reloadGrid"]);
   }
+  static Object readProperty(Object object, String property) {
+      if (object == null) {
+        return null;
+      }
+      if (property == null) {
+        return object;
+      }
+      if (object is! Map) {
+        throw "Object is not a Map!";
+      }
+      Map map = object as Map;
+      var i = property.indexOf(".");
+      if (i < 0) {
+        return map[property];
+      }
+      var immediateProperty = property.substring(0, i);
+      var immediateObject = map[immediateProperty];
+      return readProperty(immediateObject, property.substring(i + 1));
+    }
+  
   void addItem(Object rowId, Map newData) {
-    _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(newData), "last", null]);
+    _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(_mapItem(newData)), "last", null]);
   }
   void updateItem(Object rowId, Map newData) {
-    _grid.callMethod("jqGrid", ['setRowData', rowId, new JsObject.jsify(newData), null]);
+    _grid.callMethod("jqGrid", ['setRowData', rowId, new JsObject.jsify(_mapItem(newData)), null]);
   }
   
   void removeItem(Object rowId) {
