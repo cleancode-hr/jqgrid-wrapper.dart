@@ -89,11 +89,10 @@ class JQGrid {
   String _gridCaption = "";
   Function _onRowSelected = null;
   Function _onRowRightClick = null;
-  String _sortOrder;
-  bool _sortAsc = true;
   int _width = 640;
   int _height = 480;
   Map columnMappings = {};
+  Function _onSortCol;
   
   JQGrid(Object container) {
     _container = container;
@@ -112,9 +111,8 @@ class JQGrid {
   void set onRowRightClick(Function value) {
     _onRowRightClick = value;
     }
-  void setSort(String field, bool ascending) {
-    _sortOrder = field;
-    _sortAsc = ascending;
+  void setOnSortCol(Function value) {
+    _onSortCol = value;
   }
   void set gridCaption(String value) {
     _gridCaption = value;
@@ -210,9 +208,7 @@ class JQGrid {
           "multiboxonly": true,
           "shrinkToFit": true,
           "grouping": true,
-          "sortname": _sortOrder,
           "scrollrows": true,
-          "sortorder": _sortAsc ? "asc" : "desc",
           "onSelectRow" : (rowid, isChecked, b) {
             if (_onRowSelected != null) {
               _onRowSelected(rowid, isChecked);
@@ -222,6 +218,12 @@ class JQGrid {
             if (_onRowRightClick != null) {
               e.callMethod("preventDefault", []);
               _onRowRightClick(rowid, iRow, iCol, e);
+            }
+          },
+          "onSortCol": (index, iCol, sortorder) {
+            if (_onSortCol != null) {
+              _onSortCol(_columns[int.parse(index)].fieldName, sortorder);
+              return "stop";
             }
           }
         })]);
@@ -272,8 +274,8 @@ class JQGrid {
       return readProperty(immediateObject, property.substring(i + 1));
     }
   
-  void addItem(Object rowId, Map newData) {
-    _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(_mapItem(newData)), "last", null]);
+  void addItem(Object rowId, Map newData, [String position = "last"]) {
+    _grid.callMethod("jqGrid", ['addRowData', rowId, new JsObject.jsify(_mapItem(newData)), position, null]);
   }
   void updateItem(Object rowId, Map newData) {
     _grid.callMethod("jqGrid", ['setRowData', rowId, new JsObject.jsify(_mapItem(newData)), null]);
